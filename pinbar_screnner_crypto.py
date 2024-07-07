@@ -36,6 +36,17 @@ interval = config.get('INTERVAL')
 bot_token = config.get('TELEGRAM_BOT_TOKEN')
 channel_id = config.get('TELEGRAM_CHANNEL_ID')
 
+start_time = ""
+if time_frame == d1_time_frame:
+    start_time = datetime.now() - timedelta(days=30)
+elif time_frame == h4_time_frame:
+    start_time = datetime.now() - timedelta(days=14)
+elif time_frame == h1_time_frame:
+    start_time = datetime.now() - timedelta(days=7)
+elif time_frame == m_15_time_frame:
+    start_time = datetime.now() - timedelta(days=1)
+start_time = int(start_time.timestamp() * 1000)
+
 defaultCurrenCyParamsMap = {
     "symbol": "BTC-USDT",
     "interval": f"{time_frame}",
@@ -180,7 +191,7 @@ def get_currency_data_frame(data, currencyParams):
         fig = create_candlestick_chart(df_final)
         symbol = df_final["symbol"][0]
         # Send message to Telegram
-        message = f'Pinbar detected on {symbol} 5min timeframe at {df.index[-1]}'
+        message = f'Pinbar detected on {symbol} {time_frame}min timeframe at {df.index[-1]}'
         send_telegram_message(bot_token, channel_id, message, fig)
 
     return df_final
@@ -191,18 +202,6 @@ def get_currency_data_frame(data, currencyParams):
 if __name__ == '__main__':
     dfAllCurrencies = pd.json_normalize(json.loads(get_all_currencies())['data']['symbols']).iloc[0:1]
     ScreenerDf = pd.DataFrame([], columns=default_columns, index=['candlestick_chart_close_time'])
-
-    start_time = ""
-    if time_frame == d1_time_frame:
-        start_time = datetime.now() - timedelta(days=30)
-    elif time_frame == h4_time_frame:
-        start_time = datetime.now() - timedelta(days=14)
-    elif time_frame == h1_time_frame:
-        start_time = datetime.now() - timedelta(days=7)
-    elif time_frame == m_15_time_frame:
-        start_time = datetime.now() - timedelta(days=1)
-    start_time = int(start_time.timestamp() * 1000)
-
     results = asyncio.run(main(dfAllCurrencies))
     # finalDf = pd.concat(results)
 
