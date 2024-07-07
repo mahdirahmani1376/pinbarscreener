@@ -75,7 +75,7 @@ def is_pinbar(candle):
 
 
 def send_telegram_message(bot_token, channel_id, message, fig):
-    # requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
+    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
     # Save the figure as an image
     buf = BytesIO()
     fig.write_image(buf, format='png', width=1920, height=1080)
@@ -189,7 +189,7 @@ def get_currency_data_frame(data, currencyParams):
 ###################################################################################################################
 
 if __name__ == '__main__':
-    dfAllCurrencies = pd.json_normalize(json.loads(get_all_currencies())['data']['symbols']).iloc[0:1]
+    dfAllCurrencies = pd.json_normalize(json.loads(get_all_currencies())['data']['symbols']).iloc[0:2]
     ScreenerDf = pd.DataFrame([], columns=default_columns, index=['candlestick_chart_close_time'])
 
     start_time = ""
