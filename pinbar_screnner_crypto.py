@@ -78,7 +78,10 @@ def create_candlestick_chart(df):
 
 # Function to detect pinbar candles
 def is_pinbar(candle):
-    open_price, high, low, close = candle
+    open_price = candle['Open']
+    high = candle['High']
+    low = candle['Low']
+    close = candle['Close']
     body = abs(close - open_price)
     upper_wick = high - max(open_price, close)
     lower_wick = min(open_price, close) - low
