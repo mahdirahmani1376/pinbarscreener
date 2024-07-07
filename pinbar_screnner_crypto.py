@@ -12,8 +12,29 @@ import hmac
 from hashlib import sha256
 import plotly.graph_objects as go
 from io import BytesIO
+from aiohttp_client_cache import CachedSession, SQLiteBackend
 
-count_of_strong_close_bars = 4
+weekly_time_frame = "1w"
+h4_time_frame = "4h"
+h1_time_frame = "1h"
+d1_time_frame = "1d"
+m_15_time_frame = '15m'
+time_frame = h4_time_frame
+
+cache_dict = {
+    "4h": 60 * 60 * 4,
+    "15m": 60 * 15
+}
+
+cache = SQLiteBackend(
+    cache_name='~/.cache/aiohttp-requests.db',  # For SQLite, this will be used as the filename
+    expire_after=cache_dict[time_frame],  # By default, cached responses expire in an hour
+    # allowed_codes=(200, 418),  # Cache responses with these status codes
+    allowed_methods=['GET', 'POST'],  # Cache requests with these HTTP methods
+    include_headers=True,  # Cache requests with different headers separately
+    ignored_params=['auth_token'],  # Keep using the cached response even if this param changes
+    timeout=2.5,  # Connection timeout for SQLite backend
+)
 
 now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -25,13 +46,7 @@ timeStampFormat = '%Y-%m-%d %H:%M:%S'
 MAX_CONCURRENT = 16
 RATE_LIMIT_IN_SECOND = 16
 limiter = AsyncLimiter(RATE_LIMIT_IN_SECOND, 1.0)
-weekly_time_frame = "1w"
-h4_time_frame = "4h"
-h1_time_frame = "1h"
-d1_time_frame = "1d"
-m_15_time_frame = '15m'
-time_frame = m_15_time_frame
-interval = config.get('INTERVAL')
+
 bot_token = config.get('TELEGRAM_BOT_TOKEN')
 channel_id = config.get('TELEGRAM_CHANNEL_ID')
 
@@ -63,7 +78,7 @@ default_columns = [
 ]
 
 
-def create_candlestick_chart(df,symbol):
+def create_candlestick_chart(df, symbol):
     candlestick = go.Candlestick(
         x=df.index,
         open=df['Open'],
@@ -96,7 +111,6 @@ async def send_telegram_message(bot_token, channel_id, message, fig, session):
         buf = BytesIO()
         fig.write_image(buf, format='png', width=1920, height=1080)
         buf.seek(0)
-        files = {'photo': buf}
         data = aiohttp.FormData()
         data.add_field('chat_id', channel_id)
         data.add_field('caption', message)
@@ -153,7 +167,8 @@ async def main(df_all_currencies):
     headers = {
         'X-BX-APIKEY': api_key,
     }
-    async with aiohttp.ClientSession(headers=headers) as session:
+    # async with aiohttp.ClientSession(headers=headers) as session:
+    async with CachedSession(cache=cache,headers=headers) as session:
         tasks = []
         for i in (df_all_currencies['symbol']):
             currency_params = {
@@ -201,7 +216,7 @@ async def get_currency_data_frame(data, currencyParams, session):
         # if True:
         # Create the candlestick chart
         symbol = df_final["symbol"].iloc[0]
-        fig = create_candlestick_chart(df_final,symbol)
+        fig = create_candlestick_chart(df_final, symbol)
         # Send message to Telegram
         message = f'Pinbar detected on {symbol} {time_frame}min timeframe at {df.index[-1]}'
         await send_telegram_message(bot_token, channel_id, message, fig, session)
