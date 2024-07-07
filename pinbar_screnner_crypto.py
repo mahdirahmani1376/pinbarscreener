@@ -195,7 +195,7 @@ async def get_currency_data_frame(data, currencyParams, session):
     df = df.set_index('candlestick_chart_close_time').sort_index(ascending=True)
     df_final = df.iloc[1:4 * 4 * 15]
 
-    latest_candle = df_final.iloc[-1]
+    latest_candle = df_final.iloc[-2]
 
     if is_pinbar(latest_candle):
         # if True:
