@@ -189,7 +189,7 @@ def get_currency_data_frame(data, currencyParams):
     if True:
         # Create the candlestick chart
         fig = create_candlestick_chart(df_final)
-        symbol = df_final["symbol"][0]
+        symbol = df_final["symbol"].iloc[0]
         # Send message to Telegram
         message = f'Pinbar detected on {symbol} {time_frame}min timeframe at {df.index[-1]}'
         send_telegram_message(bot_token, channel_id, message, fig)
