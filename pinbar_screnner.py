@@ -7,8 +7,8 @@ from dotenv import dotenv_values
 
 # Yahoo Finance Configuration
 symbols = [
-    'EURUSD=X',
-    'JPY=X',
+    # 'EURUSD=X',
+    # 'JPY=X',
     'GBPUSD=X'
 ]
 
@@ -80,7 +80,7 @@ def is_pinbar(candle):
 
 
 def send_telegram_message(bot_token, channel_id, message, fig):
-    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
+    # requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
     # Save the figure as an image
     buf = BytesIO()
     fig.write_image(buf, format='png', width=1920, height=1080)
