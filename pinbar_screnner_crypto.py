@@ -13,7 +13,6 @@ from hashlib import sha256
 import plotly.graph_objects as go
 from io import BytesIO
 
-
 count_of_strong_close_bars = 4
 
 now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -63,13 +62,15 @@ default_columns = [
     "volume"
 ]
 
-def create_candlestick_chart(df):
+
+def create_candlestick_chart(df,symbol):
     candlestick = go.Candlestick(
         x=df.index,
         open=df['Open'],
         high=df['High'],
         low=df['Low'],
-        close=df['Close']
+        close=df['Close'],
+        name=symbol
     )
     fig = go.Figure(data=[candlestick])
     fig.update_layout(xaxis_rangeslider_visible=False, template="plotly_dark")
@@ -88,15 +89,23 @@ def is_pinbar(candle):
     return body <= 0.3 * (high - low) and (upper_wick >= 2 * body or lower_wick >= 2 * body)
 
 
-def send_telegram_message(bot_token, channel_id, message, fig):
-    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
-    # Save the figure as an image
-    buf = BytesIO()
-    fig.write_image(buf, format='png', width=1920, height=1080)
-    buf.seek(0)
-    files = {'photo': buf}
-    requests.post(f"https://api.telegram.org/bot{bot_token}/sendPhoto?chat_id={channel_id}",
-                  files=files)
+async def send_telegram_message(bot_token, channel_id, message, fig, session):
+    async with limiter:
+        # await session.post(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={channel_id}&text={message}")
+        # Save the figure as an image
+        buf = BytesIO()
+        fig.write_image(buf, format='png', width=1920, height=1080)
+        buf.seek(0)
+        files = {'photo': buf}
+        data = aiohttp.FormData()
+        data.add_field('chat_id', channel_id)
+        data.add_field('caption', message)
+        data.add_field('photo', buf, filename='plot.png', content_type='image/png')
+
+        response = await session.post(f"https://api.telegram.org/bot{bot_token}/sendPhoto", data=data)
+        return response
+
+
 def send_request(method, path, urlpa, payload):
     url = "%s%s?%s&signature=%s" % (APIURL, path, urlpa, get_sign(secret_key, urlpa))
     # print(url)
@@ -170,12 +179,12 @@ async def send_async_request(session, path, urlpa, currencyParams):
         try:
             async with session.get(url) as response:
                 text = await response.text()
-                return get_currency_data_frame(text, currencyParams)
+                return await get_currency_data_frame(text, currencyParams, session)
         except Exception as e:
             print(e)
 
 
-def get_currency_data_frame(data, currencyParams):
+async def get_currency_data_frame(data, currencyParams, session):
     df = pd.DataFrame(json.loads(data)['data'])
     ##########################################normalizing data###########################################################
     df.columns = default_columns
@@ -184,18 +193,18 @@ def get_currency_data_frame(data, currencyParams):
     df['candlestick_chart_open_time'] = df['candlestick_chart_open_time'].apply(convert_to_time_stamp)
     df['volume'] = df['volume'].apply(lambda x: x / 1000000)
     df = df.set_index('candlestick_chart_close_time').sort_index(ascending=True)
-    df_final = df.iloc[1:4*4*15]
+    df_final = df.iloc[1:4 * 4 * 15]
 
     latest_candle = df_final.iloc[-1]
 
-    # if is_pinbar(latest_candle):
-    if True:
+    if is_pinbar(latest_candle):
+        # if True:
         # Create the candlestick chart
-        fig = create_candlestick_chart(df_final)
         symbol = df_final["symbol"].iloc[0]
+        fig = create_candlestick_chart(df_final,symbol)
         # Send message to Telegram
         message = f'Pinbar detected on {symbol} {time_frame}min timeframe at {df.index[-1]}'
-        send_telegram_message(bot_token, channel_id, message, fig)
+        await send_telegram_message(bot_token, channel_id, message, fig, session)
 
     return df_final
 
@@ -207,5 +216,3 @@ if __name__ == '__main__':
     ScreenerDf = pd.DataFrame([], columns=default_columns, index=['candlestick_chart_close_time'])
     results = asyncio.run(main(dfAllCurrencies))
     # finalDf = pd.concat(results)
-
-
