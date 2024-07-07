@@ -212,7 +212,7 @@ async def get_currency_data_frame(data, currencyParams, session):
 ###################################################################################################################
 
 if __name__ == '__main__':
-    dfAllCurrencies = pd.json_normalize(json.loads(get_all_currencies())['data']['symbols']).iloc[0:2]
+    dfAllCurrencies = pd.json_normalize(json.loads(get_all_currencies())['data']['symbols'])
     ScreenerDf = pd.DataFrame([], columns=default_columns, index=['candlestick_chart_close_time'])
     results = asyncio.run(main(dfAllCurrencies))
     # finalDf = pd.concat(results)
